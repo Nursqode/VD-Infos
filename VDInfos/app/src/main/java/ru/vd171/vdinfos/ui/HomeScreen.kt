@@ -51,7 +51,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Adjust
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -100,6 +103,7 @@ import ru.vd171.vdinfos.data.Exporter
 import ru.vd171.vdinfos.ui.components.AboutDialog
 import ru.vd171.vdinfos.ui.components.CategoryHeader
 import ru.vd171.vdinfos.ui.components.ProbeCard
+import ru.vd171.vdinfos.ui.components.ReferenceLensDialog
 import ru.vd171.vdinfos.ui.theme.verdictColor
 
 @Composable
@@ -107,6 +111,7 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     var showAbout by remember { mutableStateOf(false) }
+    var showRefLens by remember { mutableStateOf(false) }
 
     val saveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -125,16 +130,43 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
         }
     }
 
+    val saveDivergencesLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            val ok = runCatching {
+                ctx.contentResolver.openOutputStream(uri)?.use {
+                    it.write(vm.divergencesJson().toByteArray())
+                } != null
+            }.getOrDefault(false)
+            Toast.makeText(
+                ctx,
+                ctx.getString(if (ok) R.string.save_ok else R.string.save_fail),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
     Scaffold(
         topBar = {
             CompactTopBar(
                 reveal = state.reveal,
                 onReveal = { vm.toggleReveal() },
+                focusOnly = state.focusOnly,
+                onFocusOnly = { vm.toggleFocusOnly() },
                 onSave = { saveLauncher.launch(vm.suggestedFileName()) },
                 onShare = {
-                    val intent = Exporter.shareIntent(ctx, vm.currentSnapshot())
+                    val intent = Exporter.shareIntent(ctx, vm.currentSnapshot(), state.refLens)
                     ctx.startActivity(Intent.createChooser(intent, ctx.getString(R.string.action_export)))
                 },
+                onSaveDivergences = { saveDivergencesLauncher.launch(vm.suggestedDivergencesFileName()) },
+                onShareDivergences = {
+                    val intent = Exporter.shareDivergencesIntent(ctx, vm.currentSnapshot(), state.refLens)
+                    ctx.startActivity(
+                        Intent.createChooser(intent, ctx.getString(R.string.action_share_divergences))
+                    )
+                },
+                onRefLens = { showRefLens = true },
                 onAbout = { showAbout = true },
             )
         },
@@ -145,6 +177,12 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
         },
     ) { pad ->
         if (showAbout) AboutDialog { showAbout = false }
+        if (showRefLens) {
+            ReferenceLensDialog(state.refLens) { lens ->
+                vm.setRefLens(lens)
+                showRefLens = false
+            }
+        }
         Column(Modifier.fillMaxSize().padding(pad)) {
             SummaryHeader(state)
             SearchAndFilters(state, vm)
@@ -163,7 +201,8 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
             ) {
                 grouped.forEach { (cat, rows) ->
                     val mm = rows.count { it.isDivergent }
-                    val isOpen = expanded[cat] ?: (searching || mm > 0 || singleCategory)
+                    // Collapsed by default: the header count already says what is inside.
+                    val isOpen = expanded[cat] ?: (searching || singleCategory)
                     item(key = "hdr:${cat.name}") {
                         CategoryHeader(
                             title = stringResource(cat.labelRes),
@@ -172,7 +211,13 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
                     }
                     if (isOpen) {
                         items(rows, key = { it.spec.id }) { r ->
-                            ProbeCard(r, reveal = state.reveal, startExpanded = singleItem)
+                            ProbeCard(
+                                result = r,
+                                reveal = state.reveal,
+                                refLens = state.refLens,
+                                focusOnly = state.focusOnly,
+                                startExpanded = singleItem,
+                            )
                         }
                     }
                 }
@@ -190,8 +235,13 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
 private fun CompactTopBar(
     reveal: Boolean,
     onReveal: () -> Unit,
+    focusOnly: Boolean,
+    onFocusOnly: () -> Unit,
     onSave: () -> Unit,
     onShare: () -> Unit,
+    onSaveDivergences: () -> Unit,
+    onShareDivergences: () -> Unit,
+    onRefLens: () -> Unit,
     onAbout: () -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -253,6 +303,17 @@ private fun CompactTopBar(
                         onClick = { menu = false; onReveal() },
                     )
                     DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_focus_only)) },
+                        leadingIcon = {
+                            Icon(
+                                if (focusOnly) Icons.Filled.Check else Icons.Filled.FilterAlt,
+                                null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                        onClick = { menu = false; onFocusOnly() },
+                    )
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_save)) },
                         leadingIcon = { Icon(Icons.Filled.SaveAlt, null, Modifier.size(18.dp)) },
                         onClick = { menu = false; onSave() },
@@ -261,6 +322,21 @@ private fun CompactTopBar(
                         text = { Text(stringResource(R.string.action_export)) },
                         leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) },
                         onClick = { menu = false; onShare() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_save_divergences)) },
+                        leadingIcon = { Icon(Icons.Filled.SaveAlt, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onSaveDivergences() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_share_divergences)) },
+                        leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onShareDivergences() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_ref_lens)) },
+                        leadingIcon = { Icon(Icons.Filled.Adjust, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onRefLens() },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_about)) },

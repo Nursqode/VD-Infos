@@ -29,6 +29,12 @@
     <string name="action_save">Сохранить в файл</string>
     <string name="action_rescan">Сканировать снова</string>
     <string name="action_more">Действия</string>
+    <string name="action_save_divergences">Сохранить расхождения</string>
+    <string name="action_share_divergences">Поделиться расхождениями</string>
+    <string name="action_ref_lens">Эталонная линза</string>
+    <string name="action_focus_only">Только расхождения и эталон</string>
+    <string name="ref_lens_majority">Большинство (авто)</string>
+    <string name="ref_lens_body">Чтения сравниваются с этим путём, и всё, что с ним расходится, помечается в приложении и в отчёте. «Большинство» берёт за эталон самое частое чтение проверки.</string>
     <string name="save_ok">Отчёт сохранён</string>
     <string name="save_fail">Не удалось сохранить файл</string>
 

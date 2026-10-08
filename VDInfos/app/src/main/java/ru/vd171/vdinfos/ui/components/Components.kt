@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.vd171.vdinfos.R
+import ru.vd171.vdinfos.core.model.Lens
 import ru.vd171.vdinfos.core.model.LensValue
 import ru.vd171.vdinfos.core.model.ProbeResult
 import ru.vd171.vdinfos.core.model.Verdict
@@ -87,16 +88,20 @@ private fun mask(value: String): String {
 }
 
 @Composable
-private fun LensRow(v: LensValue, sensitive: Boolean, reveal: Boolean) {
+private fun LensRow(v: LensValue, sensitive: Boolean, reveal: Boolean, divergent: Boolean = false) {
     Column(Modifier.padding(top = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = v.tag ?: v.lens.short,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
+                fontWeight = if (divergent) FontWeight.Bold else FontWeight.Normal,
+                color = if (divergent) Color.White else MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .background(
+                        if (divergent) verdictColor(Verdict.MISMATCH)
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
                     .padding(horizontal = 6.dp, vertical = 1.dp),
             )
             Spacer(Modifier.width(8.dp))
@@ -170,7 +175,14 @@ private fun LensRow(v: LensValue, sensitive: Boolean, reveal: Boolean) {
 }
 
 @Composable
-fun ProbeCard(result: ProbeResult, reveal: Boolean, modifier: Modifier = Modifier, startExpanded: Boolean = false) {
+fun ProbeCard(
+    result: ProbeResult,
+    reveal: Boolean,
+    refLens: Lens? = null,
+    focusOnly: Boolean = false,
+    modifier: Modifier = Modifier,
+    startExpanded: Boolean = false,
+) {
     var expanded by remember(startExpanded) { mutableStateOf(result.verdict == Verdict.MISMATCH || startExpanded) }
     var showSolution by remember { mutableStateOf(false) }
     val divergent = result.verdict == Verdict.MISMATCH
@@ -276,7 +288,16 @@ fun ProbeCard(result: ProbeResult, reveal: Boolean, modifier: Modifier = Modifie
             }
             AnimatedVisibility(expanded) {
                 Column {
-                    result.values.forEach { LensRow(it, result.spec.sensitive, reveal) }
+                    // Red badge on the readings that disagree with the probe's reference path;
+                    // in focus mode only those readings and the reference they were measured
+                    // against stay on screen.
+                    val divergent = ProbeResult.divergentFlagsOf(result.values, refLens)
+                    result.values.forEachIndexed { i, v ->
+                        val flagged = divergent.getOrElse(i) { false }
+                        if (!focusOnly || flagged || (refLens != null && v.lens == refLens)) {
+                            LensRow(v, result.spec.sensitive, reveal, flagged)
+                        }
+                    }
                 }
             }
         }

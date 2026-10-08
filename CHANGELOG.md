@@ -8,6 +8,20 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+## [2.24] - 2026-10-08
+
+- **The diverging reading is marked, not only the probe.** Each card used to carry one verdict badge for the whole probe; now every reading whose value disagrees with the probe's reference is badged in red (`JVM`, `JNI 92B`, `TEE` ...), so the method a hook slipped into is visible without reading the values. The flags come from the verdict's own comparison - present, comparable readings, same normalisation, same boolean-word polarity - so the two can never disagree.
+
+- **New setting: reference lens.** `Reference lens` in the overflow menu decides what the marks are measured against: `Majority (auto)`, the default, keeps the most repeated reading of each probe as the baseline, or you pick one lens (`JVM`, `JNI`, `JVM+SH`, `JNI+SH`, `TEE`). On a device where one read path is known to come back unspoofed - an out-of-process `getprop`, say - picking it makes the spoofed paths the marked ones instead of the real reading. A probe that does not read through the chosen lens falls back to the majority. The choice is persisted and recorded in the divergence report.
+
+- **The exported report marks the divergences.** Every divergent reading in `vdinfos-report.json` now carries `"mark_before": ">>> DIVERGENT >>>"` ahead of its value, `"mark_after": "<<< DIVERGENT <<<"` after it and `"divergent": true`; the fields are absent from the readings that agree, so `grep mark_before` lands exactly on the divergences and `"divergent": true` is there for scripts. The in-app snapshot and its cache stay raw - the marks exist in the exported copy only.
+
+- **New export: divergences only.** `Save divergences` and `Share divergences` write `vdinfos-divergences.json` with one entry per divergent probe (`probe`, `title`, `category`, `verdict`) holding only the offending readings, instead of the whole ~4500-reading report.
+
+- **Categories start collapsed.** A category header no longer opens itself because it holds mismatches; its mismatch count already says what is inside. Searching, or a filter that leaves a single category, still opens it.
+
+- **New view filter: divergences + reference only.** The overflow menu toggle lists only the probes with a divergent reading and, inside a card, keeps only the divergent readings plus the reference reading they were compared against.
+
 ## [2.23] - 2026-10-08
 
 - **The header is one compact line and no longer fights the probe list.** The 64dp title bar whose title wrapped onto a second line ("VD Infos" with the version under it) is replaced by a single line - name, version and a 9sp tagline - whose height follows its content. On a narrow screen or with a large system font scale the title used to be clipped and pushed over the list; now it stays whole and the list starts right below the filters. About 100dp of vertical space came back.

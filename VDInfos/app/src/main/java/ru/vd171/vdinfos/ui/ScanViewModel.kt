@@ -27,9 +27,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import ru.vd171.vdinfos.BuildConfig
 import ru.vd171.vdinfos.core.model.Category
+import ru.vd171.vdinfos.core.model.Lens
 import ru.vd171.vdinfos.core.model.ProbeResult
 import ru.vd171.vdinfos.core.model.Verdict
+import ru.vd171.vdinfos.data.Exporter
 import ru.vd171.vdinfos.data.LocaleManager
+import ru.vd171.vdinfos.data.ReferenceLens
 import ru.vd171.vdinfos.data.Snapshot
 import ru.vd171.vdinfos.data.SnapshotStore
 import ru.vd171.vdinfos.engine.ProbeEngine
@@ -49,6 +52,10 @@ data class ScanUiState(
     val onlyDivergent: Boolean = false,
     val category: Category? = null,
     val reveal: Boolean = false,
+    /** The path the divergence marks are measured against; null keeps the probe majority. */
+    val refLens: Lens? = null,
+    /** Keep only the divergences and the reading they were compared against. */
+    val focusOnly: Boolean = false,
 ) {
     val done: Int get() = results.size
     val progress: Float get() = if (total == 0) 0f else done.toFloat() / total
@@ -69,6 +76,7 @@ data class ScanUiState(
                     it.spec.id.contains(query, true) ||
                     it.values.any { v -> v.value?.contains(query, true) == true }
             }
+            .filter { !focusOnly || ProbeResult.divergentFlagsOf(it.values, refLens).any { f -> f } }
             .sortedWith(compareBy<ProbeResult> { it.spec.category.ordinal }
                 .thenByDescending { it.verdict == Verdict.MISMATCH }
                 .thenBy { it.spec.title })
@@ -80,7 +88,9 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
     private val engine = ProbeEngine(LocaleManager.wrap(app))
     private val store = SnapshotStore(app)
 
-    private val _state = MutableStateFlow(ScanUiState(total = engine.count))
+    private val _state = MutableStateFlow(
+        ScanUiState(total = engine.count, refLens = ReferenceLens.load(app))
+    )
     val state: StateFlow<ScanUiState> = _state.asStateFlow()
 
     init { scan() }
@@ -109,15 +119,25 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
     fun setCategory(c: Category?) = _state.update { it.copy(category = c) }
     fun toggleReveal() = _state.update { it.copy(reveal = !it.reveal) }
 
+    fun toggleFocusOnly() = _state.update { it.copy(focusOnly = !it.focusOnly) }
+
+    fun setRefLens(lens: Lens?) {
+        ReferenceLens.save(getApplication<Application>(), lens)
+        _state.update { it.copy(refLens = lens) }
+    }
+
     fun currentSnapshot(): Snapshot =
         Snapshot(System.currentTimeMillis(), BuildConfig.VERSION_NAME, _state.value.results)
 
-    fun reportJson(): String =
-        ru.vd171.vdinfos.data.Exporter.toJson(currentSnapshot())
+    fun reportJson(): String = Exporter.toJson(currentSnapshot(), _state.value.refLens)
 
-    fun suggestedFileName(): String {
-        val ts = java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US)
-            .format(java.util.Date())
-        return "vdinfos-$ts.json"
-    }
+    /** The short report: only the readings that diverge from the reference path. */
+    fun divergencesJson(): String = Exporter.toDivergencesJson(currentSnapshot(), _state.value.refLens)
+
+    fun suggestedFileName(): String = "vdinfos-${stamp()}.json"
+
+    fun suggestedDivergencesFileName(): String = "vdinfos-divergences-${stamp()}.json"
+
+    private fun stamp(): String =
+        java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(java.util.Date())
 }

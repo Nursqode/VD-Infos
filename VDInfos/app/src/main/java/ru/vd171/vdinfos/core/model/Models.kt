@@ -20,10 +20,14 @@
  * ======================================================================
  */
 
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package ru.vd171.vdinfos.core.model
 
 import androidx.annotation.StringRes
 import ru.vd171.vdinfos.R
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -62,7 +66,18 @@ enum class Lens(val label: String, val short: String) {
 data class LensValue(
     val lens: Lens,
     val source: String,
+    /** Report only: marker written before the value of a divergent reading (null otherwise). */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("mark_before")
+    val markBefore: String? = null,
     val value: String?,
+    /** Report only: marker written after the value of a divergent reading (null otherwise). */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("mark_after")
+    val markAfter: String? = null,
+    /** Report only: true where this reading disagrees with its probe's reference reading. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val divergent: Boolean = false,
     val error: String? = null,
     val elapsedMicros: Long = 0L,
     val compare: Boolean = true,
@@ -106,15 +121,29 @@ data class ProbeResult(
     val isDivergent: Boolean get() = verdict == Verdict.MISMATCH
 
     companion object {
+        /**
+         * Flags aligned with [values] marking the readings the verdict votes on: present,
+         * comparable, not an instrument failure and, where a real value exists, not a
+         * shell refusal.
+         */
+        private fun votingFlags(values: List<LensValue>): List<Boolean> {
+            val base = values.map { it.present && it.compare && !isInstrumentFailure(it.value!!) }
+            if (base.none { it }) return base
+            val hasNonShellValue = values.indices.any { i ->
+                base[i] && !values[i].lens.isShell && !isRefusal(values[i].value!!)
+            }
+            return values.indices.map { i ->
+                base[i] && !(hasNonShellValue && values[i].lens.isShell && isRefusal(values[i].value!!))
+            }
+        }
+
         fun verdictOf(values: List<LensValue>): Verdict {
             val present = values.filter { it.present }
             val errored = values.filter { !it.ok }
             if (present.isEmpty()) return if (errored.isNotEmpty()) Verdict.ERROR else Verdict.EMPTY
-            val voting = present.filter { it.compare && !isInstrumentFailure(it.value!!) }
-            if (voting.isEmpty()) return Verdict.INFO
-            val hasNonShellValue = voting.any { !it.lens.isShell && !isRefusal(it.value!!) }
-            val comparable = if (hasNonShellValue)
-                voting.filterNot { it.lens.isShell && isRefusal(it.value!!) } else voting
+            val voting = votingFlags(values)
+            val comparable = values.filterIndexed { i, _ -> voting[i] }
+            if (comparable.isEmpty()) return Verdict.INFO
             if (comparable.size == 1) return Verdict.SINGLE
             val norm = comparable.map { normalise(it.value!!) }
             val polarity = norm.map { BOOLEAN_WORDS[it] }
@@ -122,6 +151,39 @@ data class ProbeResult(
                 return if (polarity.toSet().size == 1) Verdict.MATCH else Verdict.MISMATCH
             }
             return if (norm.toSet().size == 1) Verdict.MATCH else Verdict.MISMATCH
+        }
+
+        /**
+         * Flags aligned with [values]: `true` where a reading disagrees with the probe's
+         * reference reading, so the UI can point at the exact method a divergence came from.
+         *
+         * The reference is the [reference] lens whenever that lens voted on this probe -
+         * handy when one path is known to be unspoofed (an out-of-process getprop, say),
+         * so the spoofed paths are the ones marked. Without it, the consensus is the most
+         * repeated normalised value among the voting readings; when two or more values tie
+         * for the most repeated, no reading is trusted over the others and every voting
+         * reading is flagged.
+         *
+         * Readings outside the vote (not comparable, refused shell calls, instrument
+         * failures, absent values) are never flagged, and a probe whose readings agree
+         * flags nothing at all.
+         */
+        fun divergentFlagsOf(values: List<LensValue>, reference: Lens? = null): List<Boolean> {
+            val voting = votingFlags(values)
+            val votingIdx = values.indices.filter { voting[it] }
+            if (votingIdx.size < 2) return List(values.size) { false }
+            val pivot = reference?.let { ref -> votingIdx.firstOrNull { values[it].lens == ref } }
+            if (pivot != null) {
+                val base = normalise(values[pivot].value!!)
+                return values.indices.map { i -> voting[i] && normalise(values[i].value!!) != base }
+            }
+            val norm = votingIdx.map { normalise(values[it].value!!) }
+            val counts = norm.groupingBy { it }.eachCount()
+            val top = counts.values.max()
+            val leaders = counts.filterValues { it == top }.keys
+            if (leaders.size > 1) return voting
+            val consensus = leaders.first()
+            return values.indices.map { i -> voting[i] && normalise(values[i].value!!) != consensus }
         }
 
         private val BOOLEAN_WORDS = mapOf(

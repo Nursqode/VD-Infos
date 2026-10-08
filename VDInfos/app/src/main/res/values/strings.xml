@@ -30,6 +30,12 @@
     <string name="action_save">Save to file</string>
     <string name="action_rescan">Scan again</string>
     <string name="action_more">More actions</string>
+    <string name="action_save_divergences">Save divergences</string>
+    <string name="action_share_divergences">Share divergences</string>
+    <string name="action_ref_lens">Reference lens</string>
+    <string name="action_focus_only">Divergences + reference only</string>
+    <string name="ref_lens_majority">Majority (auto)</string>
+    <string name="ref_lens_body">Readings are compared against this path, and everything that disagrees with it is marked in the app and in the report. Majority keeps the most repeated reading of each probe as the baseline.</string>
     <string name="save_ok">Report saved</string>
     <string name="save_fail">Could not save file</string>
 

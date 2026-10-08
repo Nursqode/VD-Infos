@@ -83,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.vd171.vdinfos.BuildConfig
 import ru.vd171.vdinfos.R
+import ru.vd171.vdinfos.core.model.Lens
 import ru.vd171.vdinfos.data.LocaleManager
 
 @Composable
@@ -299,6 +300,55 @@ fun LanguageDialog(current: String, onCommit: (String) -> Unit) {
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp, start = 4.dp),
                 )
+            }
+        },
+    )
+}
+
+/**
+ * Picks the reading the divergence marks are measured against: the probe's own majority,
+ * or one lens whose value is trusted (the spoofed paths are then the ones marked).
+ */
+@Composable
+fun ReferenceLensDialog(current: Lens?, onCommit: (Lens?) -> Unit) {
+    var selected by remember { mutableStateOf(current) }
+    var expanded by remember { mutableStateOf(false) }
+    val autoLabel = stringResource(R.string.ref_lens_majority)
+    val selectedLabel = selected?.let { "${it.short} - ${it.label}" } ?: autoLabel
+
+    AlertDialog(
+        onDismissRequest = { onCommit(selected) },
+        confirmButton = {
+            TextButton(onClick = { onCommit(selected) }) { Text(stringResource(R.string.lang_apply)) }
+        },
+        title = { Text(stringResource(R.string.action_ref_lens), fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.ref_lens_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Box(Modifier.padding(top = 14.dp)) {
+                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(selectedLabel, modifier = Modifier.weight(1f))
+                        Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(autoLabel) },
+                            leadingIcon = { if (selected == null) Icon(Icons.Filled.Check, null) },
+                            onClick = { selected = null; expanded = false },
+                        )
+                        Lens.entries.forEach { lens ->
+                            DropdownMenuItem(
+                                text = { Text("${lens.short} - ${lens.label}") },
+                                leadingIcon = { if (selected == lens) Icon(Icons.Filled.Check, null) },
+                                onClick = { selected = lens; expanded = false },
+                            )
+                        }
+                    }
+                }
             }
         },
     )

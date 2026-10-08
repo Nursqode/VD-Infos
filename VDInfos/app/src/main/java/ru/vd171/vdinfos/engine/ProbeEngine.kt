@@ -53,8 +53,14 @@ class ProbeEngine(private val appContext: Context) {
                 launch {
                     gate.withPermit {
                         var values = withTimeoutOrNull(TASK_TIMEOUT_MS) { task.run(appContext) }
-                            ?: listOf(LensValue(Lens.SHELL, "timeout", null,
-                                appContext.getString(ru.vd171.vdinfos.R.string.err_probe_timeout)))
+                            ?: listOf(
+                                LensValue(
+                                    lens = Lens.SHELL,
+                                    source = "timeout",
+                                    value = null,
+                                    error = appContext.getString(ru.vd171.vdinfos.R.string.err_probe_timeout),
+                                )
+                            )
                         var verdict = ProbeResult.verdictOf(values)
                         if (verdict == Verdict.MISMATCH) {
                             val confirm = withTimeoutOrNull(TASK_TIMEOUT_MS) { task.run(appContext) }

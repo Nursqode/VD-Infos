@@ -54,7 +54,11 @@ inline fun measure(lens: Lens, source: String, compare: Boolean = true, tag: Str
     val t0 = System.nanoTime()
     return try {
         val v = block()
-        LensValue(lens, source, v?.takeIf { it.isNotEmpty() }, null, (System.nanoTime() - t0) / 1000, compare, tag = tag, reveal = reveal)
+        LensValue(
+            lens = lens, source = source, value = v?.takeIf { it.isNotEmpty() },
+            error = null, elapsedMicros = (System.nanoTime() - t0) / 1000, compare = compare,
+            tag = tag, reveal = reveal,
+        )
     } catch (t: Throwable) {
         val token = refusalToken(t)
         val msg = t.message ?: t.javaClass.simpleName
