@@ -29,6 +29,7 @@
     <string name="action_export">Share report</string>
     <string name="action_save">Save to file</string>
     <string name="action_rescan">Scan again</string>
+    <string name="action_more">More actions</string>
     <string name="save_ok">Report saved</string>
     <string name="save_fail">Could not save file</string>
 

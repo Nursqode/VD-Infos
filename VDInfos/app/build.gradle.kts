@@ -44,8 +44,8 @@ android {
         applicationId = "ru.vd171.vdinfos"
         minSdk = 26
         targetSdk = 35
-        versionCode = 226
-        versionName = "2.22"
+        versionCode = 227
+        versionName = "2.23"
 
         vectorDrawables.useSupportLibrary = true
 

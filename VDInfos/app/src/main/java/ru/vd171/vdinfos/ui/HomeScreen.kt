@@ -26,28 +26,42 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -56,10 +70,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,26 +80,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
-import ru.vd171.vdinfos.core.model.Category
-import ru.vd171.vdinfos.ui.components.AboutDialog
-import ru.vd171.vdinfos.ui.components.CategoryHeader
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.vd171.vdinfos.R
+import ru.vd171.vdinfos.core.model.Category
 import ru.vd171.vdinfos.core.model.Verdict
 import ru.vd171.vdinfos.data.Exporter
-import ru.vd171.vdinfos.ui.components.Dot
+import ru.vd171.vdinfos.ui.components.AboutDialog
+import ru.vd171.vdinfos.ui.components.CategoryHeader
 import ru.vd171.vdinfos.ui.components.ProbeCard
 import ru.vd171.vdinfos.ui.theme.verdictColor
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: ScanViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -112,48 +127,15 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Row {
-                            Text(
-                                stringResource(R.string.app_name),
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.alignByBaseline(),
-                            )
-                            Text(
-                                " v" + ru.vd171.vdinfos.BuildConfig.VERSION_NAME,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.alignByBaseline(),
-                            )
-                        }
-                        Text(
-                            stringResource(R.string.app_tagline) +
-                                " · SDK " + ctx.applicationInfo.targetSdkVersion,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+            CompactTopBar(
+                reveal = state.reveal,
+                onReveal = { vm.toggleReveal() },
+                onSave = { saveLauncher.launch(vm.suggestedFileName()) },
+                onShare = {
+                    val intent = Exporter.shareIntent(ctx, vm.currentSnapshot())
+                    ctx.startActivity(Intent.createChooser(intent, ctx.getString(R.string.action_export)))
                 },
-                actions = {
-                    IconButton(onClick = { vm.toggleReveal() }) {
-                        Icon(
-                            if (state.reveal) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = stringResource(R.string.action_reveal),
-                        )
-                    }
-                    IconButton(onClick = { saveLauncher.launch(vm.suggestedFileName()) }) {
-                        Icon(Icons.Filled.SaveAlt, contentDescription = stringResource(R.string.action_save))
-                    }
-                    IconButton(onClick = {
-                        val intent = Exporter.shareIntent(ctx, vm.currentSnapshot())
-                        ctx.startActivity(Intent.createChooser(intent, ctx.getString(R.string.action_export)))
-                    }) { Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.action_export)) }
-                    IconButton(onClick = { showAbout = true }) {
-                        Icon(Icons.Filled.Info, contentDescription = stringResource(R.string.action_about))
-                    }
-                },
+                onAbout = { showAbout = true },
             )
         },
         floatingActionButton = {
@@ -175,7 +157,7 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
             LazyColumn(
                 Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 12.dp, end = 12.dp, bottom = 96.dp, top = 4.dp
+                    start = 12.dp, end = 12.dp, bottom = 96.dp, top = 2.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -199,11 +181,103 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
     }
 }
 
+/**
+ * One compact line for the app title, version and tagline, plus a single overflow
+ * button. The bar wraps its content instead of forcing a fixed height, so a large
+ * system font scale can no longer push the header over the probe list.
+ */
+@Composable
+private fun CompactTopBar(
+    reveal: Boolean,
+    onReveal: () -> Unit,
+    onSave: () -> Unit,
+    onShare: () -> Unit,
+    onAbout: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    var menu by remember { mutableStateOf(false) }
+
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        "v" + ru.vd171.vdinfos.BuildConfig.VERSION_NAME,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+                Text(
+                    stringResource(R.string.app_tagline) +
+                        " \u00b7 SDK " + ctx.applicationInfo.targetSdkVersion,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 9.sp,
+                    lineHeight = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box {
+                IconButton(onClick = { menu = true }, modifier = Modifier.size(34.dp)) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.action_more),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_reveal)) },
+                        leadingIcon = {
+                            Icon(
+                                if (reveal) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                        onClick = { menu = false; onReveal() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_save)) },
+                        leadingIcon = { Icon(Icons.Filled.SaveAlt, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onSave() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_export)) },
+                        leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onShare() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_about)) },
+                        leadingIcon = { Icon(Icons.Filled.Info, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onAbout() },
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SummaryHeader(state: ScanUiState) {
     val allAgreed = !state.scanning && state.total > 0 &&
         state.done == state.total && state.mismatches == 0
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
@@ -211,8 +285,10 @@ private fun SummaryHeader(state: ScanUiState) {
                         pluralStringResource(
                             R.plurals.summary_divergences, state.mismatches, state.mismatches,
                         ),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     color = when {
                         state.mismatches > 0 -> verdictColor(Verdict.MISMATCH)
                         allAgreed -> verdictColor(Verdict.MATCH)
@@ -222,65 +298,102 @@ private fun SummaryHeader(state: ScanUiState) {
                 Text(
                     stringResource(R.string.summary_line, state.done, state.total, state.matches) +
                         if (!state.nativeAvailable) stringResource(R.string.summary_native_off) else "",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (state.scanning) CircularProgressIndicator(Modifier.width(24.dp))
+            if (state.scanning) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
         }
         if (state.scanning) {
             LinearProgressIndicator(
                 progress = { state.progress },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
             )
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Legend(Verdict.MISMATCH); Legend(Verdict.MATCH); Legend(Verdict.SINGLE); Legend(Verdict.INFO)
         }
     }
 }
 
+/** Compact, icon-free search box: one thin line instead of a 56dp text field. */
 @Composable
-private fun Legend(v: Verdict) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Dot(verdictColor(v))
-        Spacer(Modifier.width(4.dp))
-        Text(stringResource(v.labelRes), style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+private fun CompactSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(9.dp)
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val stroke = if (focused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        interactionSource = interaction,
+        modifier = modifier,
+        decorationBox = { inner ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 34.dp)
+                    .clip(shape)
+                    .border(if (focused) 1.5.dp else 1.dp, stroke, shape)
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f)) {
+                    if (value.isEmpty()) {
+                        Text(
+                            placeholder,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    inner()
+                }
+                if (value.isNotEmpty()) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.action_clear),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(15.dp)
+                            .clickable { onValueChange("") },
+                    )
+                }
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchAndFilters(state: ScanUiState, vm: ScanViewModel) {
     Column {
-        OutlinedTextField(
+        CompactSearchField(
             value = state.query,
             onValueChange = { vm.setQuery(it) },
-            leadingIcon = { Icon(Icons.Filled.Search, null) },
-            trailingIcon = {
-                if (state.query.isNotEmpty()) {
-                    IconButton(onClick = { vm.setQuery("") }) {
-                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_clear))
-                    }
-                }
-            },
-            placeholder = { Text(stringResource(R.string.search_hint)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            placeholder = stringResource(R.string.search_hint),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp),
         )
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             FilterChip(
                 selected = state.onlyDivergent,
                 onClick = { vm.toggleDivergent() },
-                label = { Text(stringResource(R.string.filter_divergent)) },
+                label = {
+                    Text(stringResource(R.string.filter_divergent), style = MaterialTheme.typography.labelSmall)
+                },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = verdictColor(Verdict.MISMATCH),
                 ),
@@ -288,13 +401,13 @@ private fun SearchAndFilters(state: ScanUiState, vm: ScanViewModel) {
             FilterChip(
                 selected = state.category == null,
                 onClick = { vm.setCategory(null) },
-                label = { Text(stringResource(R.string.filter_all)) },
+                label = { Text(stringResource(R.string.filter_all), style = MaterialTheme.typography.labelSmall) },
             )
             state.categories.forEach { c ->
                 FilterChip(
                     selected = state.category == c,
                     onClick = { vm.setCategory(if (state.category == c) null else c) },
-                    label = { Text(stringResource(c.labelRes)) },
+                    label = { Text(stringResource(c.labelRes), style = MaterialTheme.typography.labelSmall) },
                 )
             }
         }

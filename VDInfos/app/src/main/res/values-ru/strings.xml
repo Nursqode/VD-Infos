@@ -28,6 +28,7 @@
     <string name="action_export">Поделиться отчётом</string>
     <string name="action_save">Сохранить в файл</string>
     <string name="action_rescan">Сканировать снова</string>
+    <string name="action_more">Действия</string>
     <string name="save_ok">Отчёт сохранён</string>
     <string name="save_fail">Не удалось сохранить файл</string>
 

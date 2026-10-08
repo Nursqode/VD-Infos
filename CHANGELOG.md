@@ -8,6 +8,18 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+## [2.23] - 2026-10-08
+
+- **The header is one compact line and no longer fights the probe list.** The 64dp title bar whose title wrapped onto a second line ("VD Infos" with the version under it) is replaced by a single line - name, version and a 9sp tagline - whose height follows its content. On a narrow screen or with a large system font scale the title used to be clipped and pushed over the list; now it stays whole and the list starts right below the filters. About 100dp of vertical space came back.
+
+- **The four header actions moved into an overflow menu.** Reveal identity, save to file, share report and about are the same actions behind one "⋮" button instead of four 48dp icon buttons, returning about 160dp of the bar to the title.
+
+- **The search box is a thin 34dp line with no magnifier.** A plain field (12sp monospace, 1dp outline, primary colour while focused) replaces the 56dp `OutlinedTextField`, and the clear "✕" appears only when there is something to clear.
+
+- **The verdict legend is gone.** The colour dots with "divergent / match / single / info" floated under the summary and took a fifth of the screen; every card still carries its own coloured verdict badge, so the mapping stays visible where it matters.
+
+- **Summary and filter spacing tightened.** The divergence count drops from `titleLarge` to `titleMedium`, the block padding from 16/8dp to 12/1dp and the chip row from 8dp to 4dp.
+
 ## [2.22] - 2026-10-01
 
 - **New probe: FLAG_SECURE self-verify.** `integrity:flagsecure_honored` sets `FLAG_SECURE` on the app's own window, reads it back, then clears it. A screenshot-unlock hook on `Window.addFlags`/`setFlags` drops the bit, so a flag read back absent (`STRIPPED`) is the tell. The SurfaceFlinger compositor-side variant leaves the window flag set and is out of scope here.
