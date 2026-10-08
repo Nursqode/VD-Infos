@@ -154,6 +154,36 @@ data class ProbeResult(
         }
 
         /**
+         * The readings that vote on a probe plus the one they are measured against.
+         *
+         * [pivot] is the index of the reading the marks are measured against: the
+         * [reference] lens when it voted, otherwise the first reading carrying the most
+         * repeated value. [tie] says two or more values share that top count, so without a
+         * chosen lens no reading is trusted over the others.
+         */
+        private class Vote(
+            val voting: List<Boolean>,
+            val indices: List<Int>,
+            val pivot: Int?,
+            val tie: Boolean,
+        )
+
+        private fun voteOf(values: List<LensValue>, reference: Lens?): Vote {
+            val voting = votingFlags(values)
+            val indices = values.indices.filter { voting[it] }
+            if (indices.size < 2) return Vote(voting, indices, indices.firstOrNull(), false)
+            reference?.let { ref -> indices.firstOrNull { values[it].lens == ref } }
+                ?.let { return Vote(voting, indices, it, false) }
+            val norm = indices.map { normalise(values[it].value!!) }
+            val counts = norm.groupingBy { it }.eachCount()
+            val top = counts.values.max()
+            val leaders = counts.filterValues { it == top }.keys
+            if (leaders.size > 1) return Vote(voting, indices, indices.first(), true)
+            val consensus = leaders.first()
+            return Vote(voting, indices, indices.first { normalise(values[it].value!!) == consensus }, false)
+        }
+
+        /**
          * Flags aligned with [values]: `true` where a reading disagrees with the probe's
          * reference reading, so the UI can point at the exact method a divergence came from.
          *
@@ -169,22 +199,21 @@ data class ProbeResult(
          * flags nothing at all.
          */
         fun divergentFlagsOf(values: List<LensValue>, reference: Lens? = null): List<Boolean> {
-            val voting = votingFlags(values)
-            val votingIdx = values.indices.filter { voting[it] }
-            if (votingIdx.size < 2) return List(values.size) { false }
-            val pivot = reference?.let { ref -> votingIdx.firstOrNull { values[it].lens == ref } }
-            if (pivot != null) {
-                val base = normalise(values[pivot].value!!)
-                return values.indices.map { i -> voting[i] && normalise(values[i].value!!) != base }
-            }
-            val norm = votingIdx.map { normalise(values[it].value!!) }
-            val counts = norm.groupingBy { it }.eachCount()
-            val top = counts.values.max()
-            val leaders = counts.filterValues { it == top }.keys
-            if (leaders.size > 1) return voting
-            val consensus = leaders.first()
-            return values.indices.map { i -> voting[i] && normalise(values[i].value!!) != consensus }
+            val vote = voteOf(values, reference)
+            if (vote.indices.size < 2) return List(values.size) { false }
+            if (vote.tie) return vote.voting
+            val pivot = vote.pivot ?: return List(values.size) { false }
+            val base = normalise(values[pivot].value!!)
+            return values.indices.map { i -> vote.voting[i] && normalise(values[i].value!!) != base }
         }
+
+        /**
+         * Index of the one reading the marks are measured against ([divergentFlagsOf]), so a
+         * focus view can keep exactly that row and drop the others of the same lens. Null
+         * when the probe has nothing to compare.
+         */
+        fun referenceIndexOf(values: List<LensValue>, reference: Lens? = null): Int? =
+            voteOf(values, reference).pivot
 
         private val BOOLEAN_WORDS = mapOf(
             "true" to true, "1" to true, "yes" to true, "on" to true, "enabled" to true,

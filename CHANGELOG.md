@@ -8,6 +8,10 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+- **The focus view keeps the reference reading, not every reading of its lens.** With `Divergences + reference only` on, a card used to keep every row sharing the reference lens - four `JVM` rows where only one was the baseline. It now keeps the single reading the marks were measured against (the new `ProbeResult.referenceIndexOf`) plus the divergences; every other row, the same lens included, is hidden.
+
+- **The baseline is picked in one place.** `divergentFlagsOf` and `referenceIndexOf` share one vote (`voteOf`), so the row a focus view keeps and the row the marks were measured against cannot drift apart. Behaviour of the marks themselves is unchanged (majority, chosen lens, tie, agreed, non-voting rows and single readings are covered by tests run during the change).
+
 ## [2.24] - 2026-10-08
 
 - **The diverging reading is marked, not only the probe.** Each card used to carry one verdict badge for the whole probe; now every reading whose value disagrees with the probe's reference is badged in red (`JVM`, `JNI 92B`, `TEE` ...), so the method a hook slipped into is visible without reading the values. The flags come from the verdict's own comparison - present, comparable readings, same normalisation, same boolean-word polarity - so the two can never disagree.

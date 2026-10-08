@@ -288,13 +288,14 @@ fun ProbeCard(
             }
             AnimatedVisibility(expanded) {
                 Column {
-                    // Red badge on the readings that disagree with the probe's reference path;
-                    // in focus mode only those readings and the reference they were measured
-                    // against stay on screen.
+                    // Red badge on the readings that disagree with the probe's reference path.
+                    // Focus mode keeps those rows plus the one reading they were measured
+                    // against - every other row, even of the same lens, is hidden.
                     val divergent = ProbeResult.divergentFlagsOf(result.values, refLens)
+                    val reference = ProbeResult.referenceIndexOf(result.values, refLens)
                     result.values.forEachIndexed { i, v ->
                         val flagged = divergent.getOrElse(i) { false }
-                        if (!focusOnly || flagged || (refLens != null && v.lens == refLens)) {
+                        if (!focusOnly || flagged || i == reference) {
                             LensRow(v, result.spec.sensitive, reveal, flagged)
                         }
                     }
