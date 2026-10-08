@@ -52,9 +52,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Adjust
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.outlined.CheckBox
+import androidx.compose.material.icons.outlined.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -305,9 +305,14 @@ private fun CompactTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_focus_only)) },
                         leadingIcon = {
+                            // A quiet checkbox that stays in place: an empty box when the
+                            // filter is off, a checked one when it is on.
                             Icon(
-                                if (focusOnly) Icons.Filled.Check else Icons.Filled.FilterAlt,
-                                null,
+                                if (focusOnly) Icons.Outlined.CheckBox
+                                else Icons.Outlined.CheckBoxOutlineBlank,
+                                contentDescription = null,
+                                tint = if (focusOnly) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp),
                             )
                         },
