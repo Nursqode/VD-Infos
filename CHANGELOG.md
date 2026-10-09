@@ -8,6 +8,14 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+## [2.26] - 2026-10-09
+
+- **The divergence count follows the reference lens.** The number in the header was counted from the verdict the scan had frozen (`Verdict.MISMATCH`), so picking a reference lens moved the red marks in the cards and in the exported report while the count stayed on the previous baseline. A probe now counts as a divergence when any of its readings disagrees with the chosen path (`ProbeResult.divergesUnder`) - the very test the marks and `vdinfos-divergences.json` already used. The category badges, the `Only divergent` filter, the card border and badge and the divergence line of the shared text report follow the same number, so the header, the badges and the report can no longer drift apart. Without a reference lens nothing changes: the probe's own verdict still decides.
+
+- **Every probe is marked once, not once per read.** Marking a probe normalises all of its readings, and the count asked for the marks on every pass: the header read the number three times per recomposition, `filtered` was rebuilt twice per pass with its sort re-measuring its probes on every comparison, and the normalisation compiled a `Regex` per reading. On a full scan of about 1000 probes that came to tens of thousands of measurements and around a hundred thousand pattern compilations on the composition thread, repeated on every state update - each partial scan result, each keystroke in the search box, each filter tap - which is what made the app hang. The marks are now measured once per probe and kept (`Marks`, shared by the states of one scan and dropped when the scan or the lens changes), the pattern is a constant, and the filtered list is built once per state: one linear pass over the probes per scan, one measurement per probe when the lens changes, no pattern compilation at all. Committing the same lens no longer re-measures anything.
+
+- **A running scan shows its partial results every 50 probes** instead of every 25, so the screen rebuilds the list half as often while the probes are still being read.
+
 ## [2.25] - 2026-10-08
 
 - **The focus filter is a checkbox in the menu.** `Divergences + reference only` used to signal its state by swapping its icon (funnel / tick), which reads as decoration rather than as a switch. It now carries a quiet checkbox that never moves - an empty box while the filter is off, a checked one in the primary colour while it is on - so it is obvious that it is on and that tapping it again turns it off.
