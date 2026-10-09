@@ -8,6 +8,10 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+## [2.27] - 2026-10-09
+
+- **The About dialog names the authors of this build.** The `Developer` row, which carried VD171 alone, is now an `Authors` row naming both VD171 and Nursqode, and the contacts list gained `@Nursqode` next to `@VD171` (the label is translated in all 21 languages, like the rest of the dialog). Nothing else changed: the probes, the marks and the exported reports are the same as in 2.26.
+
 ## [2.26] - 2026-10-09
 
 - **The divergence count follows the reference lens.** The number in the header was counted from the verdict the scan had frozen (`Verdict.MISMATCH`), so picking a reference lens moved the red marks in the cards and in the exported report while the count stayed on the previous baseline. A probe now counts as a divergence when any of its readings disagrees with the chosen path (`ProbeResult.divergesUnder`) - the very test the marks and `vdinfos-divergences.json` already used. The category badges, the `Only divergent` filter, the card border and badge and the divergence line of the shared text report follow the same number, so the header, the badges and the report can no longer drift apart. Without a reference lens nothing changes: the probe's own verdict still decides.
