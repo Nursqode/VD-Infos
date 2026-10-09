@@ -204,7 +204,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 AboutSectionLabel(stringResource(R.string.about_project))
                 AboutCard {
-                    AboutRow(Icons.Outlined.Person, stringResource(R.string.about_developer), "VD171", "https://github.com/VD171")
+                    AboutRow(Icons.Outlined.Person, stringResource(R.string.about_authors), "VD171, Nursqode")
                     AboutRow(Icons.Outlined.Code, stringResource(R.string.about_source), "github.com/VD171/VD-Infos", "https://github.com/VD171/VD-Infos")
                     AboutRow(Icons.Outlined.Gavel, stringResource(R.string.about_license), "GNU AGPL-3.0-or-later")
                 }
@@ -218,6 +218,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     AboutRow(Icons.Outlined.Email, "E-mail", "vd.priv8@pm.me", "mailto:vd.priv8@pm.me")
                     AboutRow(Icons.Outlined.Forum, "XDA", "@VD171", "https://xdaforums.com/m/vd171.4699873/")
                     AboutRow(Icons.Outlined.Link, "GitHub", "@VD171", "https://github.com/VD171")
+                    AboutRow(Icons.Outlined.Link, "GitHub", "@Nursqode", "https://github.com/Nursqode")
                 }
 
                 AboutSectionLabel(stringResource(R.string.about_support))

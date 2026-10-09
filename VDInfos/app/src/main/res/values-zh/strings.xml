@@ -81,7 +81,7 @@
     <string name="action_close">关闭</string>
     <string name="action_copy">复制</string>
     <string name="copied">已复制</string>
-    <string name="about_developer">开发者</string>
+    <string name="about_authors">作者</string>
     <string name="about_source">源代码</string>
     <string name="about_license">许可证</string>
     <string name="about_contacts">联系方式</string>

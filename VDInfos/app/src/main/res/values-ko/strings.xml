@@ -81,7 +81,7 @@
     <string name="action_close">닫기</string>
     <string name="action_copy">복사</string>
     <string name="copied">복사됨</string>
-    <string name="about_developer">개발자</string>
+    <string name="about_authors">제작자</string>
     <string name="about_source">소스 코드</string>
     <string name="about_license">라이선스</string>
     <string name="about_contacts">연락처</string>

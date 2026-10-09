@@ -81,7 +81,7 @@
     <string name="action_close">ปิด</string>
     <string name="action_copy">คัดลอก</string>
     <string name="copied">คัดลอกแล้ว</string>
-    <string name="about_developer">ผู้พัฒนา</string>
+    <string name="about_authors">ผู้จัดทำ</string>
     <string name="about_source">ซอร์สโค้ด</string>
     <string name="about_license">สัญญาอนุญาต</string>
     <string name="about_contacts">ติดต่อ</string>
