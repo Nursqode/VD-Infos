@@ -120,6 +120,18 @@ data class ProbeResult(
     val primary: String? get() = values.firstOrNull { it.present }?.value
     val isDivergent: Boolean get() = verdict == Verdict.MISMATCH
 
+    /**
+     * Whether the probe counts as a divergence against [reference].
+     *
+     * Without a reference the probe's own majority [verdict] decides, as always. With one,
+     * the chosen path is trusted, so the probe is divergent as soon as any reading disagrees
+     * with it - even where the readings agree with each other under boolean wording and the
+     * majority vote finds nothing wrong. A probe that does not read through [reference] has
+     * no such baseline and keeps its majority marks.
+     */
+    fun divergesUnder(reference: Lens?): Boolean =
+        if (reference == null) isDivergent else divergentFlagsOf(values, reference).any { it }
+
     companion object {
         /**
          * Flags aligned with [values] marking the readings the verdict votes on: present,
@@ -229,7 +241,10 @@ data class ProbeResult(
             return t in Sentinels.FAILURES || Sentinels.FAILURE_PREFIXES.any { t.startsWith(it) }
         }
 
+        /** Compiled once: a pattern per reading was the heaviest part of comparing a probe. */
+        private val WHITESPACE = Regex("\\s+")
+
         private fun normalise(v: String): String =
-            v.trim().trim('"').replace(Regex("\\s+"), " ").lowercase()
+            v.trim().trim('"').replace(WHITESPACE, " ").lowercase()
     }
 }

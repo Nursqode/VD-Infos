@@ -42,6 +42,39 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * The divergence marks already measured, keyed by probe id.
+ *
+ * Marking a probe normalises every one of its readings, so the measurement is kept instead of
+ * being redone: the header, the filters, the sort and every visible card ask for marks on each
+ * pass, and repeating that work per read is what used to stall the list. The ViewModel owns
+ * this cache and measures each probe once as the scan streams it in - one linear pass per scan
+ * instead of a fresh one for every partial result the screen shows. A new scan (the same ids
+ * can come back with other values) or a new reference lens (another baseline) drops the whole
+ * cache at once.
+ *
+ * Identity equality is on purpose: the cache travels inside [ScanUiState], and a state
+ * comparing it entry by entry would cost more than the marks it saves.
+ */
+class Marks {
+
+    private val measured = ConcurrentHashMap<String, List<Boolean>>()
+
+    /** The marks of [result], or null when nobody measured them yet. */
+    fun of(result: ProbeResult): List<Boolean>? =
+        measured[result.spec.id]?.takeIf { it.size == result.values.size }
+
+    fun put(result: ProbeResult, marks: List<Boolean>) {
+        measured[result.spec.id] = marks
+    }
+
+    /** Measures [result] against [lens], unless it has been measured already. */
+    fun measure(result: ProbeResult, lens: Lens?) {
+        if (of(result) == null) put(result, ProbeResult.divergentFlagsOf(result.values, lens))
+    }
+}
 
 data class ScanUiState(
     val results: List<ProbeResult> = emptyList(),
@@ -56,19 +89,55 @@ data class ScanUiState(
     val refLens: Lens? = null,
     /** Keep only the divergences and the reading they were compared against. */
     val focusOnly: Boolean = false,
+    /**
+     * The marks measured under [refLens]: filled by the ViewModel as the scan arrives, shared
+     * by every state of that scan, and replaced whenever the lens or the results change.
+     */
+    val marks: Marks = Marks(),
 ) {
     val done: Int get() = results.size
     val progress: Float get() = if (total == 0) 0f else done.toFloat() / total
 
-    val mismatches: Int get() = results.count { it.verdict == Verdict.MISMATCH }
-    val matches: Int get() = results.count { it.verdict == Verdict.MATCH }
+    /**
+     * Marks of [result] under this state's [refLens]: the ones already measured, or a fresh
+     * measurement for whatever the ViewModel has not reached yet (a probe read through a new
+     * lens, or one asked about before the scan got to it).
+     */
+    fun marksOf(result: ProbeResult): List<Boolean> =
+        marks.of(result) ?: ProbeResult.divergentFlagsOf(result.values, refLens).also {
+            marks.put(result, it)
+        }
 
-    val categories: List<Category>
-        get() = Category.entries.filter { c -> results.any { it.spec.category == c } }
+    /**
+     * Whether [result] counts as a divergence here: with a reference lens the marks decide, as
+     * the chosen path is trusted and whatever disagrees with it is the divergence - even where
+     * the majority vote found nothing wrong. Without one the probe's own verdict decides, as
+     * always, which keeps the default reading free of any mark work at all.
+     */
+    fun diverges(result: ProbeResult): Boolean =
+        if (refLens == null) result.isDivergent else marksOf(result).any { it }
 
-    val filtered: List<ProbeResult>
-        get() = results.asSequence()
-            .filter { !onlyDivergent || it.verdict == Verdict.MISMATCH }
+    private val divergentCount: Int by lazy { results.count { diverges(it) } }
+    private val matchCount: Int by lazy { results.count { it.verdict == Verdict.MATCH && !diverges(it) } }
+
+    /** Probes that count as divergences under the chosen [refLens]. */
+    val mismatches: Int get() = divergentCount
+
+    /** Probes that still agree once the chosen lens is the baseline. */
+    val matches: Int get() = matchCount
+
+    val categories: List<Category> by lazy {
+        Category.entries.filter { c -> results.any { it.spec.category == c } }
+    }
+
+    /**
+     * The list the screen scrolls: filtered, ordered with the divergences first. Built once per
+     * state - the screen reads it several times per pass, and every read used to redo the sort,
+     * whose comparator re-measured its probes on every single comparison.
+     */
+    val filtered: List<ProbeResult> by lazy {
+        results.asSequence()
+            .filter { !onlyDivergent || diverges(it) }
             .filter { category == null || it.spec.category == category }
             .filter {
                 query.isBlank() ||
@@ -76,11 +145,12 @@ data class ScanUiState(
                     it.spec.id.contains(query, true) ||
                     it.values.any { v -> v.value?.contains(query, true) == true }
             }
-            .filter { !focusOnly || ProbeResult.divergentFlagsOf(it.values, refLens).any { f -> f } }
+            .filter { !focusOnly || marksOf(it).any { f -> f } }
             .sortedWith(compareBy<ProbeResult> { it.spec.category.ordinal }
-                .thenByDescending { it.verdict == Verdict.MISMATCH }
+                .thenByDescending { diverges(it) }
                 .thenBy { it.spec.title })
             .toList()
+    }
 }
 
 class ScanViewModel(app: Application) : AndroidViewModel(app) {
@@ -97,13 +167,19 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
 
     fun scan() {
         if (_state.value.scanning) return
-        _state.update { it.copy(scanning = true, results = emptyList()) }
+        // A new scan reads every probe again and the values can come back different: no mark
+        // measured for the previous run survives it, so the state starts with a fresh cache.
+        _state.update { it.copy(scanning = true, results = emptyList(), marks = Marks()) }
         viewModelScope.launch {
             val acc = ArrayList<ProbeResult>(engine.count)
             var i = 0
             engine.scan().collect { r ->
                 acc.add(r); i++
-                if (i % 25 == 0) _state.update { it.copy(results = ArrayList(acc)) }
+                // Measured as it arrives, into whichever cache the state holds now: linear over
+                // the whole scan, and the partial results shown while scanning cost nothing.
+                val current = _state.value
+                current.marks.measure(r, current.refLens)
+                if (i % PROGRESS_STEP == 0) _state.update { it.copy(results = ArrayList(acc)) }
             }
             _state.update { it.copy(results = ArrayList(acc), scanning = false) }
             persist(acc)
@@ -123,7 +199,10 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setRefLens(lens: Lens?) {
         ReferenceLens.save(getApplication<Application>(), lens)
-        _state.update { it.copy(refLens = lens) }
+        // Same baseline as before: nothing to measure again (the dialog commits on dismiss too).
+        if (_state.value.refLens == lens) return
+        // Every mark was measured against the old baseline: measure the probes again.
+        _state.update { it.copy(refLens = lens, marks = Marks()) }
     }
 
     fun currentSnapshot(): Snapshot =
@@ -140,4 +219,13 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun stamp(): String =
         java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(java.util.Date())
+
+    private companion object {
+        /**
+         * How often a running scan shows what it has found: the screen gets a partial list
+         * every this many probes. Each one rebuilds the filtered list, so a larger step trades
+         * a little less live feedback for less work on the main thread.
+         */
+        const val PROGRESS_STEP = 50
+    }
 }

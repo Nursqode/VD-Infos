@@ -200,7 +200,7 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 grouped.forEach { (cat, rows) ->
-                    val mm = rows.count { it.isDivergent }
+                    val mm = rows.count { state.diverges(it) }
                     // Collapsed by default: the header count already says what is inside.
                     val isOpen = expanded[cat] ?: (searching || singleCategory)
                     item(key = "hdr:${cat.name}") {
@@ -217,6 +217,7 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
                                 refLens = state.refLens,
                                 focusOnly = state.focusOnly,
                                 startExpanded = singleItem,
+                                marks = state.marksOf(r),
                             )
                         }
                     }

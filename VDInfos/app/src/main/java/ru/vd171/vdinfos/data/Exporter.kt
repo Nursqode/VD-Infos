@@ -29,7 +29,6 @@ import androidx.core.content.FileProvider
 import ru.vd171.vdinfos.core.model.Lens
 import ru.vd171.vdinfos.core.model.LensValue
 import ru.vd171.vdinfos.core.model.ProbeResult
-import ru.vd171.vdinfos.core.model.Verdict
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -94,10 +93,12 @@ object Exporter {
         )
     }
 
-    fun toText(snapshot: Snapshot): String = buildString {
+    fun toText(snapshot: Snapshot, reference: Lens? = null): String = buildString {
         val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(snapshot.takenAt))
         appendLine("VD Infos ${snapshot.appVersion} - $stamp")
-        val mismatches = snapshot.results.filter { it.verdict == Verdict.MISMATCH }
+        // The same divergence test the app and the divergences report use, so the number here
+        // follows the reference lens instead of the verdict the scan froze.
+        val mismatches = snapshot.results.filter { it.divergesUnder(reference) }
         appendLine("Probes: ${snapshot.results.size} | Divergences: ${mismatches.size}")
         appendLine("=".repeat(48))
         if (mismatches.isNotEmpty()) {
@@ -116,7 +117,7 @@ object Exporter {
         Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
             putExtra(Intent.EXTRA_STREAM, fileUri(context, REPORT_FILE, toJson(snapshot, reference)))
-            putExtra(Intent.EXTRA_TEXT, toText(snapshot))
+            putExtra(Intent.EXTRA_TEXT, toText(snapshot, reference))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 

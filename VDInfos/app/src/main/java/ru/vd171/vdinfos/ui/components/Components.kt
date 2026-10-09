@@ -182,10 +182,16 @@ fun ProbeCard(
     focusOnly: Boolean = false,
     modifier: Modifier = Modifier,
     startExpanded: Boolean = false,
+    /** The marks the caller already measured; without them the card measures its own. */
+    marks: List<Boolean>? = null,
 ) {
-    var expanded by remember(startExpanded) { mutableStateOf(result.verdict == Verdict.MISMATCH || startExpanded) }
+    // The marks decide the card, not the frozen scan verdict: under a chosen reference lens
+    // a reading that disagrees with it is a divergence even when the majority found none.
+    val flags = marks ?: ProbeResult.divergentFlagsOf(result.values, refLens)
+    val divergent = result.verdict == Verdict.MISMATCH || (refLens != null && flags.any { it })
+    val verdict = if (divergent) Verdict.MISMATCH else result.verdict
+    var expanded by remember(startExpanded) { mutableStateOf(divergent || startExpanded) }
     var showSolution by remember { mutableStateOf(false) }
-    val divergent = result.verdict == Verdict.MISMATCH
     val solution = result.spec.solution
     val note = result.spec.note
     val hasInfo = solution != null || note != null
@@ -238,7 +244,7 @@ fun ProbeCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = RoundedCornerShape(12.dp),
-        border = if (divergent) BorderStroke(1.5.dp, verdictColor(result.verdict)) else null,
+        border = if (divergent) BorderStroke(1.5.dp, verdictColor(verdict)) else null,
     ) {
         Column(Modifier.padding(12.dp).fillMaxWidth()) {
             Row(
@@ -271,7 +277,7 @@ fun ProbeCard(
                             )
                         }
                     }
-                    VerdictBadge(result.verdict)
+                    VerdictBadge(verdict)
                 }
             }
             if (!expanded) {
@@ -291,10 +297,12 @@ fun ProbeCard(
                     // Red badge on the readings that disagree with the probe's reference path.
                     // Focus mode keeps those rows plus the one reading they were measured
                     // against - every other row, even of the same lens, is hidden.
-                    val divergent = ProbeResult.divergentFlagsOf(result.values, refLens)
-                    val reference = ProbeResult.referenceIndexOf(result.values, refLens)
+                    // The reference row is looked up once per card, not on every pass.
+                    val reference = remember(result, refLens) {
+                        ProbeResult.referenceIndexOf(result.values, refLens)
+                    }
                     result.values.forEachIndexed { i, v ->
-                        val flagged = divergent.getOrElse(i) { false }
+                        val flagged = flags.getOrElse(i) { false }
                         if (!focusOnly || flagged || i == reference) {
                             LensRow(v, result.spec.sensitive, reveal, flagged)
                         }
