@@ -8,6 +8,8 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+## [2.28] - 2026-10-13
+
 - **Long-press on a probe card opens a copy menu.** Holding a probe card (e.g. Bluetooth) lets you pick exactly what to copy to the clipboard: the title, the probe key, the primary value, all readings at once, or — for probes read through several lenses — each reading on its own. A plain tap still expands the card.
 
 ## [2.27] - 2026-10-09
