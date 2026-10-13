@@ -213,9 +213,14 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
     /** The short report: only the readings that diverge from the reference path. */
     fun divergencesJson(): String = Exporter.toDivergencesJson(currentSnapshot(), _state.value.refLens)
 
+    /** Complete divergent cards as a Snapshot without any mark tags. */
+    fun divergentCardsJson(): String = Exporter.toDivergentCardsJson(currentSnapshot(), _state.value.refLens)
+
     fun suggestedFileName(): String = "vdinfos-${stamp()}.json"
 
     fun suggestedDivergencesFileName(): String = "vdinfos-divergences-${stamp()}.json"
+
+    fun suggestedDivergentCardsFileName(): String = "vdinfos-divergent-cards-${stamp()}.json"
 
     private fun stamp(): String =
         java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(java.util.Date())

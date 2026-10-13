@@ -64,9 +64,22 @@ object Exporter {
 
     private const val REPORT_FILE = "vdinfos-report.json"
     private const val DIVERGENCES_FILE = "vdinfos-divergences.json"
+    private const val DIVERGENT_CARDS_FILE = "vdinfos-divergent-cards.json"
 
     fun toJson(snapshot: Snapshot, reference: Lens? = null): String =
         json.encodeToString(Snapshot.serializer(), marked(snapshot, reference))
+
+    /**
+     * Complete cards of probes that diverge under [reference]: untouched ProbeResult objects
+     * holding all their readings and full card details, without any mark_before/mark_after/divergent tags.
+     */
+    fun toDivergentCardsJson(snapshot: Snapshot, reference: Lens? = null): String {
+        val divergentCards = snapshot.results.filter { it.divergesUnder(reference) }
+        return json.encodeToString(
+            Snapshot.serializer(),
+            snapshot.copy(results = divergentCards),
+        )
+    }
 
     /** The short report: only the readings that diverge, with their markers. */
     fun toDivergencesJson(snapshot: Snapshot, reference: Lens? = null): String {
@@ -127,6 +140,16 @@ object Exporter {
             putExtra(
                 Intent.EXTRA_STREAM,
                 fileUri(context, DIVERGENCES_FILE, toDivergencesJson(snapshot, reference)),
+            )
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+    fun shareDivergentCardsIntent(context: Context, snapshot: Snapshot, reference: Lens? = null): Intent =
+        Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(
+                Intent.EXTRA_STREAM,
+                fileUri(context, DIVERGENT_CARDS_FILE, toDivergentCardsJson(snapshot, reference)),
             )
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }

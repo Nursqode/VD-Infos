@@ -8,6 +8,10 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+## [2.29] - 2026-10-13
+
+- **Export full divergent cards to JSON.** Added `Save divergent cards` and `Share divergent cards` to the overflow menu. It exports all cards with divergences exactly as represented in the app (`ProbeResult` with all readings and metadata), without any synthetic `mark_before`/`mark_after` or `divergent` fields.
+
 ## [2.28] - 2026-10-13
 
 - **Long-press on a probe card opens a copy menu.** Holding a probe card (e.g. Bluetooth) lets you pick exactly what to copy to the clipboard: the title, the probe key, the primary value, all readings at once, or — for probes read through several lenses — each reading on its own. A plain tap still expands the card.

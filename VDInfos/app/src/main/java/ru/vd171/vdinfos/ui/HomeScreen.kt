@@ -147,6 +147,23 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
         }
     }
 
+    val saveDivergentCardsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            val ok = runCatching {
+                ctx.contentResolver.openOutputStream(uri)?.use {
+                    it.write(vm.divergentCardsJson().toByteArray())
+                } != null
+            }.getOrDefault(false)
+            Toast.makeText(
+                ctx,
+                ctx.getString(if (ok) R.string.save_ok else R.string.save_fail),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
     Scaffold(
         topBar = {
             CompactTopBar(
@@ -164,6 +181,13 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
                     val intent = Exporter.shareDivergencesIntent(ctx, vm.currentSnapshot(), state.refLens)
                     ctx.startActivity(
                         Intent.createChooser(intent, ctx.getString(R.string.action_share_divergences))
+                    )
+                },
+                onSaveDivergentCards = { saveDivergentCardsLauncher.launch(vm.suggestedDivergentCardsFileName()) },
+                onShareDivergentCards = {
+                    val intent = Exporter.shareDivergentCardsIntent(ctx, vm.currentSnapshot(), state.refLens)
+                    ctx.startActivity(
+                        Intent.createChooser(intent, ctx.getString(R.string.action_share_divergent_cards))
                     )
                 },
                 onRefLens = { showRefLens = true },
@@ -242,6 +266,8 @@ private fun CompactTopBar(
     onShare: () -> Unit,
     onSaveDivergences: () -> Unit,
     onShareDivergences: () -> Unit,
+    onSaveDivergentCards: () -> Unit,
+    onShareDivergentCards: () -> Unit,
     onRefLens: () -> Unit,
     onAbout: () -> Unit,
 ) {
@@ -338,6 +364,16 @@ private fun CompactTopBar(
                         text = { Text(stringResource(R.string.action_share_divergences)) },
                         leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) },
                         onClick = { menu = false; onShareDivergences() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_save_divergent_cards)) },
+                        leadingIcon = { Icon(Icons.Filled.SaveAlt, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onSaveDivergentCards() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_share_divergent_cards)) },
+                        leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onShareDivergentCards() },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_ref_lens)) },

@@ -31,6 +31,8 @@
     <string name="action_more">Действия</string>
     <string name="action_save_divergences">Сохранить расхождения</string>
     <string name="action_share_divergences">Поделиться расхождениями</string>
+    <string name="action_save_divergent_cards">Сохранить карточки с расхождениями</string>
+    <string name="action_share_divergent_cards">Поделиться карточками с расхождениями</string>
     <string name="action_ref_lens">Эталонная линза</string>
     <string name="action_focus_only">Только расхождения и эталон</string>
     <string name="ref_lens_majority">Большинство (авто)</string>

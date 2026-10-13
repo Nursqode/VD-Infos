@@ -32,6 +32,8 @@
     <string name="action_more">More actions</string>
     <string name="action_save_divergences">Save divergences</string>
     <string name="action_share_divergences">Share divergences</string>
+    <string name="action_save_divergent_cards">Save divergent cards</string>
+    <string name="action_share_divergent_cards">Share divergent cards</string>
     <string name="action_ref_lens">Reference lens</string>
     <string name="action_focus_only">Divergences + reference only</string>
     <string name="ref_lens_majority">Majority (auto)</string>
