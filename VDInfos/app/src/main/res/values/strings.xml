@@ -34,6 +34,16 @@
     <string name="action_share_divergences">Share divergences</string>
     <string name="action_save_divergent_cards">Save divergent cards</string>
     <string name="action_share_divergent_cards">Share divergent cards</string>
+    <string name="action_compare">Compare with a report</string>
+    <string name="action_remove_compare">Close comparison</string>
+    <string name="compare_this_device">This device</string>
+    <string name="compare_loaded_report">Loaded report</string>
+    <string name="compare_only_in_a">only in this device</string>
+    <string name="compare_only_in_b">only in the loaded report</string>
+    <string name="compare_differs">%d differing probes</string>
+    <string name="compare_loaded">Report loaded</string>
+    <string name="compare_error">Could not read the report</string>
+    <string name="compare_empty">No probes to compare</string>
     <string name="action_ref_lens">Reference lens</string>
     <string name="action_focus_only">Divergences + reference only</string>
     <string name="ref_lens_majority">Majority (auto)</string>

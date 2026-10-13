@@ -51,6 +51,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CheckBox
@@ -102,6 +103,7 @@ import ru.vd171.vdinfos.core.model.Verdict
 import ru.vd171.vdinfos.data.Exporter
 import ru.vd171.vdinfos.ui.components.AboutDialog
 import ru.vd171.vdinfos.ui.components.CategoryHeader
+import ru.vd171.vdinfos.ui.components.CompareScreen
 import ru.vd171.vdinfos.ui.components.ProbeCard
 import ru.vd171.vdinfos.ui.components.ReferenceLensDialog
 import ru.vd171.vdinfos.ui.theme.verdictColor
@@ -164,6 +166,12 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
         }
     }
 
+    val comparePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) vm.loadComparedReport(uri)
+    }
+
     Scaffold(
         topBar = {
             CompactTopBar(
@@ -190,6 +198,7 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
                         Intent.createChooser(intent, ctx.getString(R.string.action_share_divergent_cards))
                     )
                 },
+                onCompare = { comparePicker.launch(arrayOf("application/json")) },
                 onRefLens = { showRefLens = true },
                 onAbout = { showAbout = true },
             )
@@ -207,6 +216,15 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
                 showRefLens = false
             }
         }
+        val comparing = state.comparing && state.compared != null
+        if (comparing) {
+            CompareScreen(
+                currentResults = state.results,
+                compared = state.compared!!,
+                reveal = state.reveal,
+                onClose = { vm.clearCompared() },
+            )
+        } else {
         Column(Modifier.fillMaxSize().padding(pad)) {
             SummaryHeader(state)
             SearchAndFilters(state, vm)
@@ -248,6 +266,7 @@ fun HomeScreen(vm: ScanViewModel = viewModel()) {
                 }
             }
         }
+        } // else
     }
 }
 
@@ -268,6 +287,7 @@ private fun CompactTopBar(
     onShareDivergences: () -> Unit,
     onSaveDivergentCards: () -> Unit,
     onShareDivergentCards: () -> Unit,
+    onCompare: () -> Unit,
     onRefLens: () -> Unit,
     onAbout: () -> Unit,
 ) {
@@ -374,6 +394,11 @@ private fun CompactTopBar(
                         text = { Text(stringResource(R.string.action_share_divergent_cards)) },
                         leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) },
                         onClick = { menu = false; onShareDivergentCards() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_compare)) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.CompareArrows, null, Modifier.size(18.dp)) },
+                        onClick = { menu = false; onCompare() },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_ref_lens)) },

@@ -58,6 +58,9 @@ object Exporter {
 
     private val json = Json { prettyPrint = true; encodeDefaults = true }
 
+    /** Lenient for reading back a report produced by the same app. */
+    private val parseJson = Json { ignoreUnknownKeys = true }
+
     /** ASCII markers around a divergent reading, so it can be grepped in the report. */
     private const val MARK_BEFORE = ">>> DIVERGENT >>>"
     private const val MARK_AFTER = "<<< DIVERGENT <<<"
@@ -80,6 +83,11 @@ object Exporter {
             snapshot.copy(results = divergentCards),
         )
     }
+
+    /** Reads a full report file back into a [Snapshot], or null when it is not one. */
+    fun parseSnapshot(text: String): Snapshot? = runCatching {
+        parseJson.decodeFromString(Snapshot.serializer(), text)
+    }.getOrNull()
 
     /** The short report: only the readings that diverge, with their markers. */
     fun toDivergencesJson(snapshot: Snapshot, reference: Lens? = null): String {

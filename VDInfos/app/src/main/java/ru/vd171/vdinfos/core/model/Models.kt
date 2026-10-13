@@ -227,6 +227,13 @@ data class ProbeResult(
         fun referenceIndexOf(values: List<LensValue>, reference: Lens? = null): Int? =
             voteOf(values, reference).pivot
 
+        /**
+         * True when the two raw readings are equivalent under the app's own normalisation,
+         * used to compare the same probe across two devices.
+         */
+        fun sameReadingValue(a: String?, b: String?): Boolean =
+            a != null && b != null && normalise(a) == normalise(b)
+
         private val BOOLEAN_WORDS = mapOf(
             "true" to true, "1" to true, "yes" to true, "on" to true, "enabled" to true,
             "false" to false, "0" to false, "no" to false, "off" to false, "disabled" to false,

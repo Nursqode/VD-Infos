@@ -8,6 +8,10 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+## [2.30] - 2026-10-13
+
+- **Compare this device against a report from another device.** `Compare with a report` in the overflow menu loads a full JSON report (`vdinfos-report.json`) exported from another phone and opens a comparison view: for every probe a two-column table with this device on the left and the loaded report on the right, one row per reading (matched by the same label the card shows — the reading tag, or the lens short name). Rows whose value differs are highlighted in red, and the header counts the probes that differ. Values are compared with the app's own normalisation, so whitespace, quotes and case are ignored and only real disagreements are marked. A probe present on just one of the two devices is flagged as well. Sensitive readings (MAC, IMEI …) stay masked on this device's side until `Reveal identity` is on. The comparison closes back to the probe list from its own button.
+
 ## [2.29] - 2026-10-13
 
 - **Export full divergent cards to JSON.** Added `Save divergent cards` and `Share divergent cards` to the overflow menu. It exports all cards with divergences exactly as represented in the app (`ProbeResult` with all readings and metadata), without any synthetic `mark_before`/`mark_after` or `divergent` fields.

@@ -23,9 +23,14 @@
 package ru.vd171.vdinfos.ui
 
 import android.app.Application
+import android.net.Uri
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import ru.vd171.vdinfos.BuildConfig
+import ru.vd171.vdinfos.R
+import ru.vd171.vdinfos.core.compare.Compare
+import ru.vd171.vdinfos.core.compare.ComparisonProbe
 import ru.vd171.vdinfos.core.model.Category
 import ru.vd171.vdinfos.core.model.Lens
 import ru.vd171.vdinfos.core.model.ProbeResult
@@ -89,6 +94,12 @@ data class ScanUiState(
     val refLens: Lens? = null,
     /** Keep only the divergences and the reading they were compared against. */
     val focusOnly: Boolean = false,
+    /**
+     * A report loaded from another device, to compare this device against it.
+     */
+    val compared: Snapshot? = null,
+    /** Whether the compare screen is shown (a report has been loaded). */
+    val comparing: Boolean = false,
     /**
      * The marks measured under [refLens]: filled by the ViewModel as the scan arrives, shared
      * by every state of that scan, and replaced whenever the lens or the results change.
@@ -221,6 +232,34 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
     fun suggestedDivergencesFileName(): String = "vdinfos-divergences-${stamp()}.json"
 
     fun suggestedDivergentCardsFileName(): String = "vdinfos-divergent-cards-${stamp()}.json"
+
+    /** Loads a report picked by the user and, when readable, opens the compare screen. */
+    fun loadComparedReport(uri: Uri) {
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            val text = runCatching {
+                ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+            }.getOrNull()
+            val snap = text?.let { Exporter.parseSnapshot(it) }
+            Toast.makeText(
+                ctx,
+                ctx.getString(if (snap != null) R.string.compare_loaded else R.string.compare_error),
+                Toast.LENGTH_SHORT,
+            ).show()
+            _state.update { it.copy(compared = snap, comparing = snap != null) }
+        }
+    }
+
+    fun clearCompared() {
+        _state.update { it.copy(compared = null, comparing = false) }
+    }
+
+    /** The aligned probes of this device against the loaded report. */
+    fun comparedProbes(): List<ComparisonProbe> {
+        val s = _state.value
+        val other = s.compared ?: return emptyList()
+        return Compare.probes(currentSnapshot(), other)
+    }
 
     private fun stamp(): String =
         java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(java.util.Date())
