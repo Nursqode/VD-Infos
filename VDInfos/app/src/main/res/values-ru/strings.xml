@@ -91,6 +91,10 @@
     <string name="action_close">Закрыть</string>
     <string name="action_copy">Копировать</string>
     <string name="copied">Скопировано</string>
+    <string name="copy_title">Копировать заголовок</string>
+    <string name="copy_key">Копировать ключ</string>
+    <string name="copy_value">Копировать значение</string>
+    <string name="copy_all">Копировать все чтения</string>
     <string name="about_authors">Авторы</string>
     <string name="about_source">Исходный код</string>
     <string name="about_license">Лицензия</string>

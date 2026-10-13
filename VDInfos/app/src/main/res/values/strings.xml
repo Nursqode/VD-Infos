@@ -95,6 +95,10 @@
     <string name="action_close">Close</string>
     <string name="action_copy">Copy</string>
     <string name="copied">Copied</string>
+    <string name="copy_title">Copy title</string>
+    <string name="copy_key">Copy key</string>
+    <string name="copy_value">Copy value</string>
+    <string name="copy_all">Copy all readings</string>
     <string name="about_authors">Authors</string>
     <string name="about_source">Source code</string>
     <string name="about_license">License</string>

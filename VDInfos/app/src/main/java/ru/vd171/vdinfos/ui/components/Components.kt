@@ -22,11 +22,15 @@
 
 package ru.vd171.vdinfos.ui.components
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,9 +41,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
@@ -56,10 +63,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ru.vd171.vdinfos.R
 import ru.vd171.vdinfos.core.model.Lens
@@ -174,6 +184,7 @@ private fun LensRow(v: LensValue, sensitive: Boolean, reveal: Boolean, divergent
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProbeCard(
     result: ProbeResult,
@@ -192,6 +203,7 @@ fun ProbeCard(
     val verdict = if (divergent) Verdict.MISMATCH else result.verdict
     var expanded by remember(startExpanded) { mutableStateOf(divergent || startExpanded) }
     var showSolution by remember { mutableStateOf(false) }
+    var showCopyMenu by remember { mutableStateOf(false) }
     val solution = result.spec.solution
     val note = result.spec.note
     val hasInfo = solution != null || note != null
@@ -239,13 +251,17 @@ fun ProbeCard(
             },
         )
     }
-    Card(
-        modifier = modifier.fillMaxWidth().clickable { expanded = !expanded },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(12.dp),
-        border = if (divergent) BorderStroke(1.5.dp, verdictColor(verdict)) else null,
-    ) {
+    Box {
+        Card(
+            modifier = modifier.fillMaxWidth().combinedClickable(
+                onClick = { expanded = !expanded },
+                onLongClick = { showCopyMenu = true },
+            ),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = if (divergent) BorderStroke(1.5.dp, verdictColor(verdict)) else null,
+        ) {
         Column(Modifier.padding(12.dp).fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -308,6 +324,102 @@ fun ProbeCard(
                         }
                     }
                 }
+            }
+        }
+        }
+        CopyMenu(
+            result = result,
+            reveal = reveal,
+            expanded = showCopyMenu,
+            onDismiss = { showCopyMenu = false },
+        )
+    }
+}
+
+/**
+ * Long-press menu on a probe card: lets the user pick exactly which piece of a
+ * reading to copy - the title, the probe key, the primary value, one lens reading,
+ * or everything at once.
+ */
+@Composable
+private fun CopyMenu(
+    result: ProbeResult,
+    reveal: Boolean,
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+
+    fun copy(text: String) {
+        clipboard.setText(AnnotatedString(text))
+        Toast.makeText(ctx, ctx.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+    }
+
+    val primary = result.primary
+    val values = result.values
+
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        // The probe name doubles as the menu header, so the items stay short.
+        Text(
+            text = result.spec.title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.copy_title)) },
+            leadingIcon = { Icon(Icons.Outlined.Lightbulb, null, Modifier.size(18.dp)) },
+            onClick = { onDismiss(); copy(result.spec.title) },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.copy_key)) },
+            leadingIcon = { Icon(Icons.Filled.Lock, null, Modifier.size(18.dp)) },
+            onClick = { onDismiss(); copy(result.spec.id) },
+        )
+        if (primary != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.copy_value)) },
+                leadingIcon = { Icon(Icons.Outlined.Visibility, null, Modifier.size(18.dp)) },
+                onClick = {
+                    onDismiss()
+                    copy(if (result.spec.sensitive && !reveal) mask(primary) else primary)
+                },
+            )
+        }
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.copy_all)) },
+            leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) },
+            onClick = {
+                onDismiss()
+                copy(
+                    buildString {
+                        appendLine(result.spec.title)
+                        appendLine(result.spec.id)
+                        values.forEach { v ->
+                            append(v.tag ?: v.lens.short).append(": ")
+                                .append(v.value ?: v.error ?: "")
+                                .appendLine()
+                        }
+                    }.trim()
+                )
+            },
+        )
+        if (values.size > 1) {
+            values.forEach { v ->
+                val shown = v.value ?: v.error ?: ""
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "${v.tag ?: v.lens.short} — $shown",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    onClick = { onDismiss(); copy(shown) },
+                )
             }
         }
     }

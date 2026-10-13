@@ -8,6 +8,8 @@ The 2.x line is a ground-up rewrite; the last public 1.x release was
 
 ## [Unreleased]
 
+- **Long-press on a probe card opens a copy menu.** Holding a probe card (e.g. Bluetooth) lets you pick exactly what to copy to the clipboard: the title, the probe key, the primary value, all readings at once, or — for probes read through several lenses — each reading on its own. A plain tap still expands the card.
+
 ## [2.27] - 2026-10-09
 
 - **The About dialog names the authors of this build.** The `Developer` row, which carried VD171 alone, is now an `Authors` row naming both VD171 and Nursqode, and the contacts list gained `@Nursqode` next to `@VD171` (the label is translated in all 21 languages, like the rest of the dialog). Nothing else changed: the probes, the marks and the exported reports are the same as in 2.26.
